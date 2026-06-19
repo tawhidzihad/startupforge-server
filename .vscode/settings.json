@@ -1,0 +1,71 @@
+{
+	"editor.fontSize": 21,
+	"editor.fontFamily": "Fira Code",
+	"editor.fontLigatures": true,
+	"editor.wordWrap": "on",
+	"editor.minimap.enabled": false,
+
+	"editor.cursorSmoothCaretAnimation": "on",
+	"editor.cursorBlinking": "expand",
+
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+
+	"[javascript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit",
+		"source.organizeImports": "explicit"
+	},
+
+	"eslint.alwaysShowStatus": true,
+
+	"js/ts.suggest.autoImports": true,
+
+	"emmet.includeLanguages": {
+		"javascript": "javascriptreact"
+	},
+
+	"editor.quickSuggestions": {
+		"other": true,
+		"comments": false,
+		"strings": true
+	},
+
+	"editor.bracketPairColorization.enabled": true,
+	"editor.guides.bracketPairs": true,
+	"editor.guides.indentation": true,
+	"editor.renderLineHighlight": "all",
+
+	"prettier.useTabs": true,
+	"prettier.tabWidth": 4,
+
+	"editor.tabSize": 4,
+	"editor.lineHeight": 30,
+
+	"files.autoSave": "afterDelay",
+
+	"files.associations": {
+		"*.jsx": "javascriptreact"
+	},
+
+	"terminal.integrated.fontSize": 17,
+	"terminal.integrated.fontFamily": "Fira Code",
+
+	"workbench.iconTheme": "vscode-icons",
+	"workbench.colorTheme": "Learn with Sumit - Peace of the eye",
+	"tailwindCSS.includeLanguages": {
+		"javascript": "javascriptreact",
+		"typescript": "typescriptreact"
+	},
+	"explorer.compactFolders": false,
+	"path-autocomplete.extensionOnImport": true,
+	"path-autocomplete.includeExtension": true,
+	"js/ts.suggest.paths": true
+}
