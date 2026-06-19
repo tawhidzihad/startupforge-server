@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT;
 const uri = process.env.MONGO_DB_URI;
 
@@ -39,6 +39,42 @@ async function run() {
 			const result = await startupsCollection.insertOne(newStartupsData);
 			res.json(result);
 		});
+
+		/* Get Founder Startup by Founder Email */
+		app.get("/api/startups", async (req, res) => {
+			const query = {};
+			if (req.query.founderEmail) {
+				query.founderEmail = req.query.founderEmail;
+			}
+			const result = await startupsCollection.findOne(query);
+			res.json(result);
+		});
+
+		/* Update Startup */
+		app.patch("/api/startups/:id", async (req, res) => {
+			const { id } = req.params;
+			const filter = {
+				_id: new ObjectId(id),
+			};
+			const updatedStartupData = {
+				$set: req.body,
+			};
+			const result = await startupsCollection.updateOne(
+				filter,
+				updatedStartupData,
+			);
+			res.json(result);
+		});
+
+		/* Delete Startup */
+		app.delete("/api/startups/:id", async (req, res) => {
+			const { id } = req.params;
+			const result = await startupsCollection.deleteOne({
+				_id: new ObjectId(id),
+			});
+			res.json(result);
+		});
+        
 
 		await client.db("admin").command({ ping: 1 });
 		console.log(
