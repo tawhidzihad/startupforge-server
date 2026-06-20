@@ -28,8 +28,9 @@ async function run() {
 		/* Database Collections */
 		const db = client.db("startupforge");
 		const startupsCollection = db.collection("startups");
+		const opportunitiesCollection = db.collection("opportunities");
 
-		/* Create Startups Api For Founder Role */
+		/* Create Startups Api, For Founder Role */
 		app.post("/api/startups", async (req, res) => {
 			const startupsData = req.body;
 			const newStartupsData = {
@@ -40,7 +41,7 @@ async function run() {
 			res.json(result);
 		});
 
-		/* Get Founder Startup by Founder Email */
+		/* Get Founder Startup by Founder Email, For Founder Role */
 		app.get("/api/startups", async (req, res) => {
 			const query = {};
 			if (req.query.founderEmail) {
@@ -50,7 +51,7 @@ async function run() {
 			res.json(result);
 		});
 
-		/* Update Startup */
+		/* Update Startup, For Founder Role*/
 		app.patch("/api/startups/:id", async (req, res) => {
 			const { id } = req.params;
 			const filter = {
@@ -66,7 +67,7 @@ async function run() {
 			res.json(result);
 		});
 
-		/* Delete Startup */
+		/* Delete Startup, For Founder Role */
 		app.delete("/api/startups/:id", async (req, res) => {
 			const { id } = req.params;
 			const result = await startupsCollection.deleteOne({
@@ -74,7 +75,55 @@ async function run() {
 			});
 			res.json(result);
 		});
-        
+
+		/*=================================================*/
+		/* Create Opportunity By Founder, For Founder Role*/
+		app.post("/api/opportunities", async (req, res) => {
+			const opportunityData = req.body;
+			const newOpportunityData = {
+				...opportunityData,
+				createdAt: new Date(),
+			};
+			const result =
+				await opportunitiesCollection.insertOne(newOpportunityData);
+			res.json(result);
+		});
+
+		/* Get Opportunities by FounderId, For Founder Role */
+		app.get("/api/opportunities", async (req, res) => {
+			const query = {};
+			if (req.query.founderId) {
+				query.founderId = req.query.founderId;
+			}
+			const cursor = opportunitiesCollection.find(query);
+			const result = await cursor.toArray();
+			res.json(result);
+		});
+
+		/* Update Opportunities Data by founder, For Founder Role */
+		app.patch("/api/opportunities/:id", async (req, res) => {
+			const { id } = req.params;
+			const filter = {
+				_id: new ObjectId(id),
+			};
+			const updatedOpportunitiesData = {
+				$set: req.body,
+			};
+			const result = await opportunitiesCollection.updateOne(
+				filter,
+				updatedOpportunitiesData,
+			);
+			res.json(result);
+		});
+
+		/* Delete opportunity by founder, For Founder Role  */
+		app.delete("/api/opportunities/:id", async (req, res) => {
+			const { id } = req.params;
+			const result = await opportunitiesCollection.deleteOne({
+				_id: new ObjectId(id),
+			});
+			res.json(result);
+		});
 
 		await client.db("admin").command({ ping: 1 });
 		console.log(
