@@ -125,6 +125,109 @@ async function run() {
 			res.json(result);
 		});
 
+		/* =======================Public Routes========================== */
+		/* Get Startup For All Public by Search Query - For Browse Startup Route  */
+		app.get("/api/public/startups", async (req, res) => {
+			const query = {};
+			if (req.query.startupName) {
+				query.startupName = {
+					$regex: req.query.startupName,
+					$options: "i",
+				};
+			}
+			const cursor = startupsCollection.find(query);
+			const result = await cursor.toArray();
+			res.json(result);
+		});
+
+		// Get single startup details for startup details in Browse Startup Route
+		app.get("/api/public/startups/:id", async (req, res) => {
+			const { id } = req.params;
+			const filter = {
+				_id: new ObjectId(id),
+			};
+			const result = await startupsCollection.findOne(filter);
+			res.json(result);
+		});
+
+		// Get All Opportunity by paricualr StartupId in Browse Startup & Browse Opportunity Route
+		app.get("/api/public/opportunities/:id", async (req, res) => {
+			const { id } = req.params;
+			const filter = {
+				startupId: id,
+			};
+			const result = await opportunitiesCollection.find(filter).toArray();
+			res.json(result);
+		});
+
+		/* Get Opportunities For All Public, by Search and Filter Query and Have pagination - Browse Opportunity Route  */
+		app.get("/api/public/opportunities", async (req, res) => {
+			const {
+				search = "",
+				workType,
+				industry,
+				page = 1,
+				limit = 9,
+			} = req.query;
+
+			const query = {};
+
+			/* Search by Role Title and Required Skills */
+			if (search) {
+				query.$or = [
+					{
+						roleTitle: {
+							$regex: search,
+							$options: "i",
+						},
+					},
+					{
+						requiredSkills: {
+							$regex: search,
+							$options: "i",
+						},
+					},
+				];
+			}
+
+			/* Filter by Work Type */
+			if (workType) {
+				query.workType = {
+					$in: workType.split(","),
+				};
+			}
+
+			/* Filter by Industry */
+			if (industry) {
+				query.industry = {
+					$in: industry.split(","),
+				};
+			}
+
+			const skip = (Number(page) - 1) * Number(limit);
+
+			const opportunities = await opportunitiesCollection
+				.find(query)
+				.sort({
+					createdAt: -1,
+				})
+				.skip(skip)
+				.limit(Number(limit))
+				.toArray();
+
+			const total = await opportunitiesCollection.countDocuments(query);
+
+			res.json({
+				data: opportunities,
+				pagination: {
+					total,
+					page: Number(page),
+					limit: Number(limit),
+					totalPages: Math.ceil(total / Number(limit)),
+				},
+			});
+		});
+
 		await client.db("admin").command({ ping: 1 });
 		console.log(
 			"Pinged your deployment. You successfully connected to MongoDB!",
