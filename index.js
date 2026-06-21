@@ -27,9 +27,26 @@ async function run() {
 
 		/* Database Collections */
 		const db = client.db("startupforge");
+
+		const plansCollection = db.collection("plans");
+
 		const startupsCollection = db.collection("startups");
+
 		const opportunitiesCollection = db.collection("opportunities");
 
+		const applicationsCollection = db.collection("applications");
+
+		/*===============Plans Get APIS==============*/
+		app.get("/api/plans", async (req, res) => {
+			const query = {};
+			if (req.query.planId) {
+				query.planId = req.query.planId;
+			}
+			const result = await plansCollection.findOne(query);
+			res.json(result);
+		});
+
+		/*===============Startup CRUD API - For Founder Role=======================*/
 		/* Create Startups Api, For Founder Role */
 		app.post("/api/startups", async (req, res) => {
 			const startupsData = req.body;
@@ -67,16 +84,19 @@ async function run() {
 			res.json(result);
 		});
 
-		/* Delete Startup, For Founder Role */
+		/* Delete Startup with all their Opportunities, For Founder Role */
 		app.delete("/api/startups/:id", async (req, res) => {
 			const { id } = req.params;
 			const result = await startupsCollection.deleteOne({
 				_id: new ObjectId(id),
 			});
+			await opportunitiesCollection.deleteMany({
+				startupId: id,
+			});
 			res.json(result);
 		});
 
-		/*=================================================*/
+		/*===============Opportunity CRUD API - For Founder Role==================*/
 		/* Create Opportunity By Founder, For Founder Role*/
 		app.post("/api/opportunities", async (req, res) => {
 			const opportunityData = req.body;
@@ -125,6 +145,35 @@ async function run() {
 			res.json(result);
 		});
 
+		/*=====================Applications CRUD API==========================*/
+		/* Submit new apllication all role can submit */
+		app.post("/api/applications", async (req, res) => {
+			const applicationData = req.body;
+			const newApplicationData = {
+				...applicationData,
+				createdAt: new Date(),
+			};
+			const result =
+				await applicationsCollection.insertOne(newApplicationData);
+			res.json(result);
+		});
+
+		/* Get Application Data by applicantId and OpportunityId */
+		app.get("/api/applications", async (req, res) => {
+			const query = {};
+			if (req.query.opportunityId) {
+				query.opportunityId = req.query.opportunityId;
+			}
+			if (req.query.founderId) {
+				query.founderId = req.query.founderId;
+			}
+			if (req.query.applicantId) {
+				query.applicantId = req.query.applicantId;
+			}
+			const result = await applicationsCollection.find(query).toArray();
+			res.json(result);
+		});
+
 		/* =======================Public Routes========================== */
 		/* Get Startup For All Public by Search Query - For Browse Startup Route  */
 		app.get("/api/public/startups", async (req, res) => {
@@ -157,6 +206,15 @@ async function run() {
 				startupId: id,
 			};
 			const result = await opportunitiesCollection.find(filter).toArray();
+			res.json(result);
+		});
+
+		// Get Single Opportunity by opportunity_id for Oppotunity Details Page
+		app.get("/api/public/opportunity/:id", async (req, res) => {
+			const { id } = req.params;
+			const result = await opportunitiesCollection.findOne({
+				_id: new ObjectId(id),
+			});
 			res.json(result);
 		});
 
