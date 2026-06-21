@@ -145,7 +145,7 @@ async function run() {
 			res.json(result);
 		});
 
-		/*=====================Applications CRUD API==========================*/
+		/*===========Applications CRUD API - For Founder & Collaborator Role====================*/
 		/* Submit new apllication all role can submit */
 		app.post("/api/applications", async (req, res) => {
 			const applicationData = req.body;
@@ -158,7 +158,7 @@ async function run() {
 			res.json(result);
 		});
 
-		/* Get Application Data by applicantId and OpportunityId */
+		/* Get Application Data by applicantId, OpportunityId & founderId - For Founder and Collaborator*/
 		app.get("/api/applications", async (req, res) => {
 			const query = {};
 			if (req.query.opportunityId) {
@@ -171,6 +171,26 @@ async function run() {
 				query.applicantId = req.query.applicantId;
 			}
 			const result = await applicationsCollection.find(query).toArray();
+			res.json(result);
+		});
+
+		/* Update Applications Status Approve or Reject - For Founder Role Only */
+		app.patch("/api/applications/:id", async (req, res) => {
+			const { id } = req.params;
+			const filter = {
+				_id: new ObjectId(id),
+			};
+			const updatedData = req.body;
+			const updatedStatus = {
+				$set: {
+					status: updatedData.status,
+				},
+			};
+			const result = await applicationsCollection.updateOne(
+				filter,
+				updatedStatus,
+			);
+
 			res.json(result);
 		});
 
