@@ -36,6 +36,27 @@ async function run() {
 
 		const applicationsCollection = db.collection("applications");
 
+		const usersCollection = db.collection("user");
+
+		/*========Admin CRUD Operations only For - Admin Role============*/
+		/* Get all users information for admin role */
+		app.get("/api/admin/users", async (req, res) => {
+			const result = await usersCollection.find().toArray();
+			res.json(result);
+		});
+
+		app.patch("/api/admin/users/:id", async (req, res) => {
+			const { id } = req.params;
+			const filter = {
+				_id: new ObjectId(id),
+			};
+			const updatedData = {
+				$set: req.body,
+			};
+			const result = await usersCollection.updateOne(filter, updatedData);
+			res.json(result);
+		});
+
 		/*===============Plans Get APIS==============*/
 		app.get("/api/plans", async (req, res) => {
 			const query = {};
@@ -68,7 +89,7 @@ async function run() {
 			res.json(result);
 		});
 
-		/* Update Startup, For Founder Role*/
+		/*--Update Startup, For Founder & "ADMIN" Role---*/
 		app.patch("/api/startups/:id", async (req, res) => {
 			const { id } = req.params;
 			const filter = {
@@ -77,14 +98,16 @@ async function run() {
 			const updatedStartupData = {
 				$set: req.body,
 			};
+
 			const result = await startupsCollection.updateOne(
 				filter,
 				updatedStartupData,
 			);
+
 			res.json(result);
 		});
 
-		/* Delete Startup with all their Opportunities, For Founder Role */
+		/*---Delete Startup with all their Opportunities, For Founder & "ADMIN" Role---*/
 		app.delete("/api/startups/:id", async (req, res) => {
 			const { id } = req.params;
 			const result = await startupsCollection.deleteOne({
