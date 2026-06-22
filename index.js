@@ -38,6 +38,10 @@ async function run() {
 
 		const usersCollection = db.collection("user");
 
+		const sessionsCollection = db.collection("session");
+
+		const subscriptionsCollection = db.collection("subscriptions");
+
 		/*========Admin CRUD Operations only For - Admin Role============*/
 		/* Get all users information for admin role */
 		app.get("/api/admin/users", async (req, res) => {
@@ -328,6 +332,33 @@ async function run() {
 				},
 			});
 		});
+
+		/*======Subscription and User Plans Update API - For Loggedin and Payment Success User===============*/
+		app.post("/api/success/subscriptions", async (req, res) => {
+			const subscriptionData = req.body;
+			const newSubscriptionData = {
+				...subscriptionData,
+				createdAt: new Date(),
+			};
+			await subscriptionsCollection.insertOne(newSubscriptionData);
+
+			//Update user plan
+			const filter = {
+				_id: new ObjectId(subscriptionData?.userId),
+			};
+			const updatedPlan = {
+				$set: {
+					plan: subscriptionData?.upgradedPlan,
+				},
+			};
+			const updatedPlanStatus = await usersCollection.updateOne(
+				filter,
+				updatedPlan,
+			);
+
+			res.json(updatedPlanStatus);
+		});
+		
 
 		await client.db("admin").command({ ping: 1 });
 		console.log(
