@@ -27,94 +27,117 @@ async function run() {
 
 		/* Database Collections */
 		const db = client.db("startupforge");
-
 		const plansCollection = db.collection("plans");
-
 		const startupsCollection = db.collection("startups");
-
 		const opportunitiesCollection = db.collection("opportunities");
-
 		const applicationsCollection = db.collection("applications");
-
 		const usersCollection = db.collection("user");
-
 		const sessionsCollection = db.collection("session");
-
 		const subscriptionsCollection = db.collection("subscriptions");
 
-		/* =========Middleware Verifications */
+		/* ===============Middleware Verifications =====================*/
+		/* Verification using authHeader, session, token, user, isBlocked */
 		const verifyToken = async (req, res, next) => {
 			try {
 				const authHeader = req.headers?.authorization;
+				// If there is no header data
 				if (!authHeader?.startsWith("Bearer ")) {
 					return res.status(401).json({
 						message: "Unauthorized access",
 					});
 				}
-				console.log("After authHeader verify", authHeader);
 
+				// Get Token and the session
 				const token = authHeader.split(" ")[1];
 				const session = await sessionsCollection.findOne({
 					token,
 				});
 
+				// If there is no session
 				if (!session) {
 					return res.status(401).json({
 						message: "Invalid session",
 					});
 				}
-				console.log("After session verify", session);
 
+				// If have session then get user by userId under session
 				const user = await usersCollection.findOne({
 					_id: session.userId,
 				});
 
+				// If there is no user
 				if (!user) {
 					return res.status(401).json({
 						message: "User not found",
 					});
 				}
-				console.log("After get the user", user);
 
+				// If user is blocked
 				if (user.isBlocked) {
 					return res.status(403).json({
 						message: "Account blocked",
 					});
 				}
 
+				// If all clear then set the user in req
 				req.user = user;
 
-				console.log("finally");
-
+				// run in next
 				next();
 			} catch (error) {
+				// If any server error
 				console.error(error);
-
 				return res.status(500).json({
 					message: "Internal Server Error",
 				});
 			}
 		};
 
+		/* Role based verifications - Reusable Functions */
+		const requireRole = (role) => {
+			return (req, res, next) => {
+				if (req.user.role !== role) {
+					return res.status(403).json({
+						message: "Forbidden",
+					});
+				}
+
+				next();
+			};
+		};
+
 		/*========Admin CRUD Operations only For - Admin Role============*/
 		/* Get all users information for admin role */
-		app.get("/api/admin/users", verifyToken, async (req, res) => {
-			const result = await usersCollection.find().toArray();
-			res.json(result);
-		});
+		app.get(
+			"/api/admin/users",
+			verifyToken,
+			requireRole("admin"),
+			async (req, res) => {
+				const result = await usersCollection.find().toArray();
+				res.json(result);
+			},
+		);
 
 		// Update User Block or Unblocked Status
-		app.patch("/api/admin/users/:id", verifyToken, async (req, res) => {
-			const { id } = req.params;
-			const filter = {
-				_id: new ObjectId(id),
-			};
-			const updatedData = {
-				$set: req.body,
-			};
-			const result = await usersCollection.updateOne(filter, updatedData);
-			res.json(result);
-		});
+		app.patch(
+			"/api/admin/users/:id",
+			verifyToken,
+			requireRole("admin"),
+			async (req, res) => {
+				const { id } = req.params;
+				const filter = {
+					_id: new ObjectId(id),
+				};
+				const updatedData = {
+					$set: req.body,
+				};
+				const result = await usersCollection.updateOne(
+					filter,
+					updatedData,
+				);
+				res.json(result);
+			},
+		);
 
 		/*===============Plans Get APIS==============*/
 		app.get("/api/plans", verifyToken, async (req, res) => {
@@ -128,25 +151,36 @@ async function run() {
 
 		/*===============Startup CRUD API - For Founder Role=======================*/
 		/* Create Startups Api, For Founder Role */
-		app.post("/api/startups", verifyToken, async (req, res) => {
-			const startupsData = req.body;
-			const newStartupsData = {
-				...startupsData,
-				createdAt: new Date(),
-			};
-			const result = await startupsCollection.insertOne(newStartupsData);
-			res.json(result);
-		});
+		app.post(
+			"/api/startups",
+			verifyToken,
+			requireRole("founder"),
+			async (req, res) => {
+				const startupsData = req.body;
+				const newStartupsData = {
+					...startupsData,
+					createdAt: new Date(),
+				};
+				const result =
+					await startupsCollection.insertOne(newStartupsData);
+				res.json(result);
+			},
+		);
 
 		/* Get Founder Startup by Founder Email, For Founder Role */
-		app.get("/api/startups", verifyToken, async (req, res) => {
-			const query = {};
-			if (req.query.founderEmail) {
-				query.founderEmail = req.query.founderEmail;
-			}
-			const result = await startupsCollection.findOne(query);
-			res.json(result);
-		});
+		app.get(
+			"/api/startups",
+			verifyToken,
+			requireRole("founder"),
+			async (req, res) => {
+				const query = {};
+				if (req.query.founderEmail) {
+					query.founderEmail = req.query.founderEmail;
+				}
+				const result = await startupsCollection.findOne(query);
+				res.json(result);
+			},
+		);
 
 		/*--Update Startup, For Founder & "ADMIN" Role---*/
 		app.patch("/api/startups/:id", verifyToken, async (req, res) => {
@@ -180,16 +214,21 @@ async function run() {
 
 		/*===============Opportunity CRUD API - For Founder Role==================*/
 		/* Create Opportunity By Founder, For Founder Role*/
-		app.post("/api/opportunities", verifyToken, async (req, res) => {
-			const opportunityData = req.body;
-			const newOpportunityData = {
-				...opportunityData,
-				createdAt: new Date(),
-			};
-			const result =
-				await opportunitiesCollection.insertOne(newOpportunityData);
-			res.json(result);
-		});
+		app.post(
+			"/api/opportunities",
+			verifyToken,
+			requireRole("founder"),
+			async (req, res) => {
+				const opportunityData = req.body;
+				const newOpportunityData = {
+					...opportunityData,
+					createdAt: new Date(),
+				};
+				const result =
+					await opportunitiesCollection.insertOne(newOpportunityData);
+				res.json(result);
+			},
+		);
 
 		/* Get Opportunities by FounderId, For Founder Role */
 		app.get("/api/opportunities", verifyToken, async (req, res) => {
@@ -203,29 +242,39 @@ async function run() {
 		});
 
 		/* Update Opportunities Data by founder, For Founder Role */
-		app.patch("/api/opportunities/:id", verifyToken, async (req, res) => {
-			const { id } = req.params;
-			const filter = {
-				_id: new ObjectId(id),
-			};
-			const updatedOpportunitiesData = {
-				$set: req.body,
-			};
-			const result = await opportunitiesCollection.updateOne(
-				filter,
-				updatedOpportunitiesData,
-			);
-			res.json(result);
-		});
+		app.patch(
+			"/api/opportunities/:id",
+			verifyToken,
+			requireRole("founder"),
+			async (req, res) => {
+				const { id } = req.params;
+				const filter = {
+					_id: new ObjectId(id),
+				};
+				const updatedOpportunitiesData = {
+					$set: req.body,
+				};
+				const result = await opportunitiesCollection.updateOne(
+					filter,
+					updatedOpportunitiesData,
+				);
+				res.json(result);
+			},
+		);
 
 		/* Delete opportunity by founder, For Founder Role  */
-		app.delete("/api/opportunities/:id", verifyToken, async (req, res) => {
-			const { id } = req.params;
-			const result = await opportunitiesCollection.deleteOne({
-				_id: new ObjectId(id),
-			});
-			res.json(result);
-		});
+		app.delete(
+			"/api/opportunities/:id",
+			verifyToken,
+			requireRole("founder"),
+			async (req, res) => {
+				const { id } = req.params;
+				const result = await opportunitiesCollection.deleteOne({
+					_id: new ObjectId(id),
+				});
+				res.json(result);
+			},
+		);
 
 		/*===========Applications CRUD API - For Founder & Collaborator Role====================*/
 		/* Submit new apllication all role can submit */
@@ -257,24 +306,29 @@ async function run() {
 		});
 
 		/* Update Applications Status Approve or Reject - For Founder Role Only */
-		app.patch("/api/applications/:id", verifyToken, async (req, res) => {
-			const { id } = req.params;
-			const filter = {
-				_id: new ObjectId(id),
-			};
-			const updatedData = req.body;
-			const updatedStatus = {
-				$set: {
-					status: updatedData.status,
-				},
-			};
-			const result = await applicationsCollection.updateOne(
-				filter,
-				updatedStatus,
-			);
+		app.patch(
+			"/api/applications/:id",
+			verifyToken,
+			requireRole("founder"),
+			async (req, res) => {
+				const { id } = req.params;
+				const filter = {
+					_id: new ObjectId(id),
+				};
+				const updatedData = req.body;
+				const updatedStatus = {
+					$set: {
+						status: updatedData.status,
+					},
+				};
+				const result = await applicationsCollection.updateOne(
+					filter,
+					updatedStatus,
+				);
 
-			res.json(result);
-		});
+				res.json(result);
+			},
+		);
 
 		/* =======================Public Routes========================== */
 		/* Get Startup For All Public by Search Query - For Browse Startup Route  */
@@ -420,78 +474,83 @@ async function run() {
 		);
 
 		/* Get All Subscriptions + Monthly Revenue and Total Revenue - Genareted by AI - Only For Admin Role*/
-		app.get("/api/success/subscriptions", verifyToken, async (req, res) => {
-			const subscriptions = await subscriptionsCollection
-				.find()
-				.sort({ createdAt: -1 })
-				.toArray();
+		app.get(
+			"/api/success/subscriptions",
+			verifyToken,
+			requireRole("admin"),
+			async (req, res) => {
+				const subscriptions = await subscriptionsCollection
+					.find()
+					.sort({ createdAt: -1 })
+					.toArray();
 
-			const revenueStats = await subscriptionsCollection
-				.aggregate([
-					{
-						$match: {
-							paymentStatus: "paid",
+				const revenueStats = await subscriptionsCollection
+					.aggregate([
+						{
+							$match: {
+								paymentStatus: "paid",
+							},
 						},
-					},
-					{
-						$facet: {
-							totalRevenue: [
-								{
-									$group: {
-										_id: null,
-										totalRevenue: {
-											$sum: "$amount",
-										},
-									},
-								},
-							],
-
-							monthlyRevenue: [
-								{
-									$group: {
-										_id: {
-											year: {
-												$year: "$createdAt",
-											},
-											month: {
-												$month: "$createdAt",
+						{
+							$facet: {
+								totalRevenue: [
+									{
+										$group: {
+											_id: null,
+											totalRevenue: {
+												$sum: "$amount",
 											},
 										},
-										revenue: {
-											$sum: "$amount",
+									},
+								],
+
+								monthlyRevenue: [
+									{
+										$group: {
+											_id: {
+												year: {
+													$year: "$createdAt",
+												},
+												month: {
+													$month: "$createdAt",
+												},
+											},
+											revenue: {
+												$sum: "$amount",
+											},
 										},
 									},
-								},
-								{
-									$sort: {
-										"_id.year": 1,
-										"_id.month": 1,
+									{
+										$sort: {
+											"_id.year": 1,
+											"_id.month": 1,
+										},
 									},
-								},
-							],
+								],
+							},
 						},
-					},
-				])
-				.toArray();
+					])
+					.toArray();
 
-			res.json({
-				subscriptions,
+				res.json({
+					subscriptions,
 
-				totalRevenue:
-					revenueStats[0]?.totalRevenue?.[0]?.totalRevenue || 0,
+					totalRevenue:
+						revenueStats[0]?.totalRevenue?.[0]?.totalRevenue || 0,
 
-				monthlyRevenue:
-					revenueStats[0]?.monthlyRevenue.map((item) => ({
-						month: new Date(
-							item._id.year,
-							item._id.month - 1,
-						).toLocaleString("en-US", {
-							month: "short",
-						}),
-						revenue: item.revenue,
-					})) || [],
-			});
-		});
+					monthlyRevenue:
+						revenueStats[0]?.monthlyRevenue.map((item) => ({
+							month: new Date(
+								item._id.year,
+								item._id.month - 1,
+							).toLocaleString("en-US", {
+								month: "short",
+							}),
+							revenue: item.revenue,
+						})) || [],
+				});
+			},
+		);
 
 		await client.db("admin").command({ ping: 1 });
 		console.log(
