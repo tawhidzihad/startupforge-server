@@ -42,14 +42,69 @@ async function run() {
 
 		const subscriptionsCollection = db.collection("subscriptions");
 
+		/* =========Middleware Verifications */
+		const verifyToken = async (req, res, next) => {
+			try {
+				const authHeader = req.headers?.authorization;
+				if (!authHeader?.startsWith("Bearer ")) {
+					return res.status(401).json({
+						message: "Unauthorized access",
+					});
+				}
+				console.log("After authHeader verify", authHeader);
+
+				const token = authHeader.split(" ")[1];
+				const session = await sessionsCollection.findOne({
+					token,
+				});
+
+				if (!session) {
+					return res.status(401).json({
+						message: "Invalid session",
+					});
+				}
+				console.log("After session verify", session);
+
+				const user = await usersCollection.findOne({
+					_id: session.userId,
+				});
+
+				if (!user) {
+					return res.status(401).json({
+						message: "User not found",
+					});
+				}
+				console.log("After get the user", user);
+
+				if (user.isBlocked) {
+					return res.status(403).json({
+						message: "Account blocked",
+					});
+				}
+
+				req.user = user;
+
+				console.log("finally");
+
+				next();
+			} catch (error) {
+				console.error(error);
+
+				return res.status(500).json({
+					message: "Internal Server Error",
+				});
+			}
+		};
+
 		/*========Admin CRUD Operations only For - Admin Role============*/
 		/* Get all users information for admin role */
-		app.get("/api/admin/users", async (req, res) => {
+		app.get("/api/admin/users", verifyToken, async (req, res) => {
 			const result = await usersCollection.find().toArray();
 			res.json(result);
 		});
 
-		app.patch("/api/admin/users/:id", async (req, res) => {
+		// Update User Block or Unblocked Status
+		app.patch("/api/admin/users/:id", verifyToken, async (req, res) => {
 			const { id } = req.params;
 			const filter = {
 				_id: new ObjectId(id),
@@ -62,7 +117,7 @@ async function run() {
 		});
 
 		/*===============Plans Get APIS==============*/
-		app.get("/api/plans", async (req, res) => {
+		app.get("/api/plans", verifyToken, async (req, res) => {
 			const query = {};
 			if (req.query.planId) {
 				query.planId = req.query.planId;
@@ -73,7 +128,7 @@ async function run() {
 
 		/*===============Startup CRUD API - For Founder Role=======================*/
 		/* Create Startups Api, For Founder Role */
-		app.post("/api/startups", async (req, res) => {
+		app.post("/api/startups", verifyToken, async (req, res) => {
 			const startupsData = req.body;
 			const newStartupsData = {
 				...startupsData,
@@ -84,7 +139,7 @@ async function run() {
 		});
 
 		/* Get Founder Startup by Founder Email, For Founder Role */
-		app.get("/api/startups", async (req, res) => {
+		app.get("/api/startups", verifyToken, async (req, res) => {
 			const query = {};
 			if (req.query.founderEmail) {
 				query.founderEmail = req.query.founderEmail;
@@ -94,7 +149,7 @@ async function run() {
 		});
 
 		/*--Update Startup, For Founder & "ADMIN" Role---*/
-		app.patch("/api/startups/:id", async (req, res) => {
+		app.patch("/api/startups/:id", verifyToken, async (req, res) => {
 			const { id } = req.params;
 			const filter = {
 				_id: new ObjectId(id),
@@ -112,7 +167,7 @@ async function run() {
 		});
 
 		/*---Delete Startup with all their Opportunities, For Founder & "ADMIN" Role---*/
-		app.delete("/api/startups/:id", async (req, res) => {
+		app.delete("/api/startups/:id", verifyToken, async (req, res) => {
 			const { id } = req.params;
 			const result = await startupsCollection.deleteOne({
 				_id: new ObjectId(id),
@@ -125,7 +180,7 @@ async function run() {
 
 		/*===============Opportunity CRUD API - For Founder Role==================*/
 		/* Create Opportunity By Founder, For Founder Role*/
-		app.post("/api/opportunities", async (req, res) => {
+		app.post("/api/opportunities", verifyToken, async (req, res) => {
 			const opportunityData = req.body;
 			const newOpportunityData = {
 				...opportunityData,
@@ -137,7 +192,7 @@ async function run() {
 		});
 
 		/* Get Opportunities by FounderId, For Founder Role */
-		app.get("/api/opportunities", async (req, res) => {
+		app.get("/api/opportunities", verifyToken, async (req, res) => {
 			const query = {};
 			if (req.query.founderId) {
 				query.founderId = req.query.founderId;
@@ -148,7 +203,7 @@ async function run() {
 		});
 
 		/* Update Opportunities Data by founder, For Founder Role */
-		app.patch("/api/opportunities/:id", async (req, res) => {
+		app.patch("/api/opportunities/:id", verifyToken, async (req, res) => {
 			const { id } = req.params;
 			const filter = {
 				_id: new ObjectId(id),
@@ -164,7 +219,7 @@ async function run() {
 		});
 
 		/* Delete opportunity by founder, For Founder Role  */
-		app.delete("/api/opportunities/:id", async (req, res) => {
+		app.delete("/api/opportunities/:id", verifyToken, async (req, res) => {
 			const { id } = req.params;
 			const result = await opportunitiesCollection.deleteOne({
 				_id: new ObjectId(id),
@@ -174,7 +229,7 @@ async function run() {
 
 		/*===========Applications CRUD API - For Founder & Collaborator Role====================*/
 		/* Submit new apllication all role can submit */
-		app.post("/api/applications", async (req, res) => {
+		app.post("/api/applications", verifyToken, async (req, res) => {
 			const applicationData = req.body;
 			const newApplicationData = {
 				...applicationData,
@@ -186,7 +241,7 @@ async function run() {
 		});
 
 		/* Get Application Data by applicantId, OpportunityId & founderId - For Founder and Collaborator*/
-		app.get("/api/applications", async (req, res) => {
+		app.get("/api/applications", verifyToken, async (req, res) => {
 			const query = {};
 			if (req.query.opportunityId) {
 				query.opportunityId = req.query.opportunityId;
@@ -202,7 +257,7 @@ async function run() {
 		});
 
 		/* Update Applications Status Approve or Reject - For Founder Role Only */
-		app.patch("/api/applications/:id", async (req, res) => {
+		app.patch("/api/applications/:id", verifyToken, async (req, res) => {
 			const { id } = req.params;
 			const filter = {
 				_id: new ObjectId(id),
@@ -335,33 +390,37 @@ async function run() {
 
 		/*======Subscription and User Plans Update API - For Loggedin and Payment Success User===============*/
 		/* Add new subcription and update user role */
-		app.post("/api/success/subscriptions", async (req, res) => {
-			const subscriptionData = req.body;
-			const newSubscriptionData = {
-				...subscriptionData,
-				createdAt: new Date(),
-			};
-			await subscriptionsCollection.insertOne(newSubscriptionData);
+		app.post(
+			"/api/success/subscriptions",
+			verifyToken,
+			async (req, res) => {
+				const subscriptionData = req.body;
+				const newSubscriptionData = {
+					...subscriptionData,
+					createdAt: new Date(),
+				};
+				await subscriptionsCollection.insertOne(newSubscriptionData);
 
-			//Update user plan
-			const filter = {
-				_id: new ObjectId(subscriptionData?.userId),
-			};
-			const updatedPlan = {
-				$set: {
-					plan: subscriptionData?.upgradedPlan,
-				},
-			};
-			const updatedPlanStatus = await usersCollection.updateOne(
-				filter,
-				updatedPlan,
-			);
+				//Update user plan
+				const filter = {
+					_id: new ObjectId(subscriptionData?.userId),
+				};
+				const updatedPlan = {
+					$set: {
+						plan: subscriptionData?.upgradedPlan,
+					},
+				};
+				const updatedPlanStatus = await usersCollection.updateOne(
+					filter,
+					updatedPlan,
+				);
 
-			res.json(updatedPlanStatus);
-		});
+				res.json(updatedPlanStatus);
+			},
+		);
 
-		/* Get All Subscriptions + Monthly Revenue and Total Revenue - Genareted by AI */
-		app.get("/api/success/subscriptions", async (req, res) => {
+		/* Get All Subscriptions + Monthly Revenue and Total Revenue - Genareted by AI - Only For Admin Role*/
+		app.get("/api/success/subscriptions", verifyToken, async (req, res) => {
 			const subscriptions = await subscriptionsCollection
 				.find()
 				.sort({ createdAt: -1 })
