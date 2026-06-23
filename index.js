@@ -358,7 +358,11 @@ async function run() {
 
 			res.json(updatedPlanStatus);
 		});
-		
+
+		app.get("/api/success/subscriptions", async (req, res) => {
+			const result = await subscriptionsCollection.find().toArray();
+			res.json(result);
+		});
 
 		await client.db("admin").command({ ping: 1 });
 		console.log(
