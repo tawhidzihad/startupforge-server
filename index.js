@@ -334,6 +334,7 @@ async function run() {
 		});
 
 		/*======Subscription and User Plans Update API - For Loggedin and Payment Success User===============*/
+		/* Add new subcription and update user role */
 		app.post("/api/success/subscriptions", async (req, res) => {
 			const subscriptionData = req.body;
 			const newSubscriptionData = {
@@ -359,9 +360,78 @@ async function run() {
 			res.json(updatedPlanStatus);
 		});
 
+		/* Get All Subscriptions + Monthly Revenue and Total Revenue - Genareted by AI */
 		app.get("/api/success/subscriptions", async (req, res) => {
-			const result = await subscriptionsCollection.find().toArray();
-			res.json(result);
+			const subscriptions = await subscriptionsCollection
+				.find()
+				.sort({ createdAt: -1 })
+				.toArray();
+
+			const revenueStats = await subscriptionsCollection
+				.aggregate([
+					{
+						$match: {
+							paymentStatus: "paid",
+						},
+					},
+					{
+						$facet: {
+							totalRevenue: [
+								{
+									$group: {
+										_id: null,
+										totalRevenue: {
+											$sum: "$amount",
+										},
+									},
+								},
+							],
+
+							monthlyRevenue: [
+								{
+									$group: {
+										_id: {
+											year: {
+												$year: "$createdAt",
+											},
+											month: {
+												$month: "$createdAt",
+											},
+										},
+										revenue: {
+											$sum: "$amount",
+										},
+									},
+								},
+								{
+									$sort: {
+										"_id.year": 1,
+										"_id.month": 1,
+									},
+								},
+							],
+						},
+					},
+				])
+				.toArray();
+
+			res.json({
+				subscriptions,
+
+				totalRevenue:
+					revenueStats[0]?.totalRevenue?.[0]?.totalRevenue || 0,
+
+				monthlyRevenue:
+					revenueStats[0]?.monthlyRevenue.map((item) => ({
+						month: new Date(
+							item._id.year,
+							item._id.month - 1,
+						).toLocaleString("en-US", {
+							month: "short",
+						}),
+						revenue: item.revenue,
+					})) || [],
+			});
 		});
 
 		await client.db("admin").command({ ping: 1 });
