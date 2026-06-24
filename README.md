@@ -270,10 +270,6 @@ startupforge-server
 
 https://github.com/tawhidzihad/startupforge-client
 
-### Server Repository
-
-https://github.com/tawhidzihad/startupforge-server
-
 ### Live Website
 
 https://startupforge-platform.vercel.app/
@@ -282,8 +278,6 @@ https://startupforge-platform.vercel.app/
 
 ## 👨‍💻 Author
 
-### Tawhid Zihad
-
-MERN Stack Developer
+**Md Tawhidul Islam Zihad** MERN Stack Developer
 
 StartupForge - Startup Team Builder Platform
